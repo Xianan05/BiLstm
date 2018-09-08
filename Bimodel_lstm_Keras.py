@@ -28,25 +28,30 @@ class BiLstm(object):
 		self.embedding_size = 100
 		self.input_vocab_size = input_vocab_size
 		self.output_vocab_size = output_vocab_size
-		self.time_length=10
+		self.time_length=20
 		self.dropout_ratio = 0.2
 		self.batch_size = 64
 		self.max_epochs =100
 
 	def build(self):
 		raw_current = Input(shape=(self.time_length,), dtype='int32')
-		current = Embedding(input_dim=self.input_vocab_size, output_dim=self.embedding_size, input_length=self.time_length, mask_zero=True)(raw_current)
-
+		print (np.shape(raw_current))
+		current = Embedding(input_dim=self.input_vocab_size, output_dim=self.embedding_size, input_length=self.time_length, mask_zero=False)(raw_current)
+		print (np.shape(current))
 		fencoder = LSTM(self.hidden_size, return_sequences=False)(current)
 		bencoder = LSTM(self.hidden_size, return_sequences=False, go_backwards=True)(current)
 		flabeling = LSTM(self.hidden_size, return_sequences=True)(current)
 		blabeling = LSTM(self.hidden_size, return_sequences=True, go_backwards=True)(current)
 		encoder = concatenate([fencoder, bencoder],axis =-1)
 		labeling = concatenate([flabeling, blabeling],axis =-1)
-
+		print (np.shape(labeling))
 		encoder = RepeatVector(self.time_length)(encoder)
 		tagger = concatenate([encoder, labeling])
 		#3tagger = Dropout(self.dropout_ratio)(tagger)
+		print('size is')
+		print (np.shape(tagger))
+		tagger = Flatten()(tagger)
+		print (np.shape(tagger))
 		prediction = TimeDistributed(Dense(self.output_vocab_size, activation='softmax'))(tagger)
 		self.model = Model(input=raw_current, output=prediction)
 		sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9)
@@ -61,15 +66,14 @@ class BiLstm(object):
 
 training_file ="atis-2.train.w-intent.iob"
 test_file = 'atis.test.w-intent.iob'
-# initialization of vocab
+# initialization
 emptyVocab = {}
 emptyIndex = list()
 trainData = dataSet(training_file,'train',emptyVocab,emptyVocab,emptyIndex,emptyIndex)
 testData = dataSet(test_file, 'test', trainData.getWordVocab(), trainData.getTagVocab(),trainData.getIndex2Word(),trainData.getIndex2Tag())
 
 
-# preprocessing by padding 0 until maxlen
-time_length = 10
+time_length = 20
 pad_X_train = sequence.pad_sequences(trainData.dataSet['utterances'], maxlen=time_length, dtype='int32', padding='pre')
 pad_X_test = sequence.pad_sequences(testData.dataSet['utterances'], maxlen=time_length, dtype='int32', padding='pre')
 pad_y_train = sequence.pad_sequences(trainData.dataSet['tags'], maxlen=time_length, dtype='int32', padding='pre')
@@ -88,5 +92,7 @@ X_test = encoding(pad_X_test, input_type, time_length, input_vocab_size)
 y_train = encoding(pad_y_train, 'embedding', time_length, output_vocab_size)
 
 bimodel  = BiLstm(input_vocab_size,output_vocab_size)
+print('build')
 bimodel.build()
+print('train')
 bimodel.train(X_train,y_train)
