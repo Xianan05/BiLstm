@@ -185,6 +185,7 @@ class decoder(object):
         lstm_cell = rnn.BasicLSTMCell(2*num_hidden, forget_bias=1.0)
         outputs,states = rnn.static_rnn(lstm_cell,x, dtype = tf.float32)
         results = tf.matmul(outputs[-1], weights['out'])+tf.cast(biases['out'],tf.float32)
+        results = tf.Print(results,[results],'intent value is ')
         return results
         
 class batch(object):
@@ -246,6 +247,7 @@ with tf.variable_scope('f2'):
 with tf.variable_scope('g1'):  
     g_1 = decoder(time_lenth,embedding_size)
     s1 = g_1.get_intent(h1,h2)
+    s1 = tf.Print(s1,[s1],'intent is ')
   
 with tf.variable_scope('g2'):  
     g_2 = decoder(time_lenth,embedding_size)
